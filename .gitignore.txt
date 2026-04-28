@@ -1,6 +1,0 @@
-/target/
-*.class
-*.log
-node_modules/
-.env
-.idea/

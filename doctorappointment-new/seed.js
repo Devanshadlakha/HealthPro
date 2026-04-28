@@ -1,7 +1,12 @@
 const { MongoClient } = require("mongodb");
 const crypto = require("crypto");
 
-const uri = "mongodb+srv://doctoradmin:DoctorApp2026@cluster0.8rr5gbw.mongodb.net/doctorapp?retryWrites=true&w=majority&appName=Cluster0";
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error("MONGODB_URI environment variable is required.");
+  console.error("Example: MONGODB_URI=\"mongodb+srv://<user>:<password>@<cluster>.mongodb.net/doctorapp\" node seed.js");
+  process.exit(1);
+}
 
 // BCrypt hash for password "Doctor@123" — pre-computed so we don't need bcrypt dependency
 // We'll use the Spring Boot PasswordEncoder format
