@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,15 +22,18 @@ public class DoctorAppointmentService {
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
     private final SlotService slotService;
+    private final ReviewService reviewService;
 
     public DoctorAppointmentService(AppointmentRepository appointmentRepository,
                                      DoctorRepository doctorRepository,
                                      PatientRepository patientRepository,
-                                     SlotService slotService) {
+                                     SlotService slotService,
+                                     ReviewService reviewService) {
         this.appointmentRepository = appointmentRepository;
         this.doctorRepository = doctorRepository;
         this.patientRepository = patientRepository;
         this.slotService = slotService;
+        this.reviewService = reviewService;
     }
 
     public List<Map<String, Object>> getAllAppointments() {
@@ -118,7 +122,9 @@ public class DoctorAppointmentService {
         profile.put("gender", doctor.getGender());
         profile.put("fees", doctor.getFees());
         profile.put("photoUrl", doctor.getPhotoUrl());
-        profile.put("rating", doctor.getRating());
+        ReviewService.AggregateRating agg = reviewService.aggregateForDoctor(doctorId);
+        profile.put("averageRating", agg.average());
+        profile.put("totalReviews", agg.total());
         return Map.of("user", profile);
     }
 
@@ -136,36 +142,38 @@ public class DoctorAppointmentService {
         return Map.of("success", true, "message", "Photo updated", "photoUrl", photoUrl);
     }
 
-    public List<Map<String, Object>> getReviews(String doctorId) {
-        var doctorOpt = doctorRepository.findById(doctorId);
-        if (doctorOpt.isEmpty()) {
+    public com.healthpro.doctorappointment.dto.PageResponse<Map<String, Object>> getReviews(String doctorId, int page, int size) {
+        if (doctorRepository.findById(doctorId).isEmpty()) {
             throw new RuntimeException("Doctor not found");
         }
+        return reviewService.getReviewsForDoctor(doctorId, page, size);
+    }
 
-        Doctor doctor = doctorOpt.get();
-        List<String> appointmentIds = doctor.getRating().stream()
-                .map(r -> r.getAppointmentId())
-                .filter(Objects::nonNull)
-                .toList();
+    public Map<String, Object> replyToReview(String doctorId, String reviewId, String reply) {
+        return reviewService.replyToReview(doctorId, reviewId, reply);
+    }
 
-        List<Appointment> appointments = appointmentRepository.findAllById(appointmentIds);
-        Map<String, String> problemMap = new HashMap<>();
-        for (Appointment apt : appointments) {
-            problemMap.put(apt.getId(), apt.getProblem());
-        }
-
-        List<Map<String, Object>> enrichedRatings = new ArrayList<>();
-        for (var rating : doctor.getRating()) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("appointmentId", rating.getAppointmentId());
-            map.put("patientName", rating.getPatientName());
-            map.put("rate", rating.getRate());
-            map.put("comment", rating.getComment());
-            map.put("problem", problemMap.getOrDefault(rating.getAppointmentId(), "No problem description"));
-            enrichedRatings.add(map);
-        }
-
-        return enrichedRatings;
+    /** Calendar view: appointments for the doctor between two dates, inclusive. */
+    public List<Map<String, Object>> getCalendar(String doctorId, String fromDate, String toDate) {
+        List<Appointment> appointments = appointmentRepository
+                .findByAppointedDoctorIdContainingAndSlotDateBetween(doctorId, fromDate, toDate);
+        return appointments.stream()
+                .filter(a -> a.getSlotDate() != null && a.getSlotTime() != null)
+                .map(a -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("appointmentId", a.getId());
+                    m.put("patientname", a.getPatientname());
+                    m.put("problem", a.getProblem());
+                    m.put("progress", a.getProgress());
+                    m.put("slotDate", a.getSlotDate());
+                    m.put("slotTime", a.getSlotTime());
+                    m.put("hospitalId", a.getHospitalId());
+                    return m;
+                })
+                .sorted(Comparator
+                        .comparing((Map<String, Object> m) -> (String) m.get("slotDate"))
+                        .thenComparing(m -> (String) m.get("slotTime")))
+                .collect(Collectors.toList());
     }
 
     // ---- New methods for Doctor Dashboard ----
@@ -195,6 +203,42 @@ public class DoctorAppointmentService {
             return timeA.compareTo(timeB);
         });
         return result;
+    }
+
+    /**
+     * Returns the doctor's next few appointments today that are still pending consult.
+     * Used by the dashboard banner ("Next appointment in 24 minutes").
+     */
+    public List<Map<String, Object>> getUpcomingForDoctor(String doctorId, int limit, int withinMinutes) {
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        LocalTime now = LocalTime.now();
+        LocalTime cutoff = now.plusMinutes(withinMinutes);
+        List<Appointment> appointments =
+                appointmentRepository.findByAppointedDoctorIdContainingAndSlotDate(doctorId, today);
+
+        return appointments.stream()
+                .filter(a -> "ongoing".equals(a.getProgress()) || "approved".equals(a.getProgress()))
+                .filter(a -> a.getSlotTime() != null && !a.getSlotTime().isBlank())
+                .map(a -> {
+                    LocalTime t;
+                    try { t = LocalTime.parse(a.getSlotTime(), DateTimeFormatter.ofPattern("HH:mm")); }
+                    catch (Exception e) { return null; }
+                    if (t.isBefore(now) || t.isAfter(cutoff)) return null;
+
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("appointmentId", a.getId());
+                    map.put("patientname", a.getPatientname());
+                    map.put("problem", a.getProblem());
+                    map.put("slotTime", a.getSlotTime());
+                    map.put("slotDate", a.getSlotDate());
+                    map.put("minutesAway", java.time.Duration.between(now, t).toMinutes());
+                    map.put("reminderSent", a.getReminderSentAt() != null);
+                    return map;
+                })
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(m -> (String) m.get("slotTime")))
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 
     public Map<String, Object> markConsulted(String appointmentId) {

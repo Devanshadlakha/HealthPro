@@ -1,22 +1,34 @@
 package com.healthpro.doctorappointment.service;
 
+import com.healthpro.doctorappointment.dto.ForgotPasswordRequest;
+import com.healthpro.doctorappointment.dto.LoginRequest;
+import com.healthpro.doctorappointment.dto.PatientSignupRequest;
+import com.healthpro.doctorappointment.dto.ResetPasswordRequest;
+import com.healthpro.doctorappointment.dto.VerifyTokenRequest;
+import com.healthpro.doctorappointment.exception.ApiException;
 import com.healthpro.doctorappointment.model.Patient;
 import com.healthpro.doctorappointment.repository.PatientRepository;
 import com.healthpro.doctorappointment.security.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
 @Service
 public class PatientAuthService {
 
-    private static final Pattern EMAIL_RE = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
-    private static final Pattern MOBILE_RE = Pattern.compile("^\\d{10}$");
+    private static final Logger log = LoggerFactory.getLogger(PatientAuthService.class);
+    private static final long RESET_TOKEN_TTL_MINUTES = 30;
+    private static final String RESET_GENERIC_REPLY = "If that email is registered, a reset link has been sent.";
 
     private final PatientRepository patientRepository;
     private final PasswordEncoder passwordEncoder;
@@ -34,142 +46,107 @@ public class PatientAuthService {
         this.emailService = emailService;
     }
 
-    public Map<String, Object> signup(Map<String, Object> body) {
-        String name = (String) body.get("name");
-        String email = (String) body.get("email");
-        String password = (String) body.get("password");
-        String mobile = (String) body.get("mobile");
-        String dob = (String) body.get("dob");
-        String gender = (String) body.get("gender");
-        Integer age = body.get("age") != null ? Integer.parseInt(body.get("age").toString()) : null;
-
-        if (name == null || email == null || password == null || mobile == null
-                || dob == null || gender == null || age == null) {
-            return Map.of("success", false, "message", "All fields are required");
-        }
-
-        if (!EMAIL_RE.matcher(email.trim()).matches()) {
-            return Map.of("success", false, "message", "Invalid email format");
-        }
-        if (!MOBILE_RE.matcher(mobile.trim()).matches()) {
-            return Map.of("success", false, "message", "Mobile number must be 10 digits");
-        }
-        if (password.length() < 6) {
-            return Map.of("success", false, "message", "Password must be at least 6 characters");
-        }
-        if (age < 0 || age > 120) {
-            return Map.of("success", false, "message", "Age must be between 0 and 120");
-        }
-
-        if (patientRepository.findByEmail(email).isPresent()) {
-            return Map.of("success", false, "message", "Email already exists");
+    public Map<String, Object> signup(PatientSignupRequest req) {
+        if (patientRepository.findByEmail(req.getEmail()).isPresent()) {
+            throw ApiException.conflict("Email already exists");
         }
 
         Patient patient = new Patient();
-        patient.setName(name);
-        patient.setEmail(email);
-        patient.setPassword(passwordEncoder.encode(password));
-        patient.setMobile(mobile);
-        patient.setDob(dob);
-        patient.setGender(gender);
-        patient.setAge(age);
+        patient.setName(req.getName());
+        patient.setEmail(req.getEmail());
+        patient.setPassword(passwordEncoder.encode(req.getPassword()));
+        patient.setMobile(req.getMobile());
+        patient.setDob(req.getDob());
+        patient.setGender(req.getGender());
+        patient.setAge(req.getAge());
         patient.setVerified(true);
-        patient.setVerifyToken(generateVerificationToken());
-
+        patient.setVerifyToken(generateToken());
         patientRepository.save(patient);
 
-        return Map.of("success", true, "message", "Signup successful. Please verify your email.");
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Signup successful. You can now log in.");
+        return resp;
     }
 
-    public Map<String, Object> login(Map<String, Object> body) {
-        String email = (String) body.get("email");
-        String password = (String) body.get("password");
-
-        if (email == null || password == null) {
-            return Map.of("success", false, "message", "Email and password are required");
-        }
-
-        var patientOpt = patientRepository.findByEmail(email);
+    public Map<String, Object> login(LoginRequest req) {
+        Optional<Patient> patientOpt = patientRepository.findByEmail(req.getEmail());
         if (patientOpt.isEmpty()) {
-            return Map.of("success", false, "message", "Invalid credentials");
+            throw ApiException.unauthorized("Invalid credentials");
         }
-
         Patient patient = patientOpt.get();
-
-        if (!passwordEncoder.matches(password, patient.getPassword())) {
-            return Map.of("success", false, "message", "Invalid credentials");
+        if (!passwordEncoder.matches(req.getPassword(), patient.getPassword())) {
+            throw ApiException.unauthorized("Invalid credentials");
         }
-
         if (patient.getVerified() == null || !patient.getVerified()) {
-            return Map.of("success", false, "message", "Please verify your email first");
+            throw ApiException.unauthorized("Please verify your email first");
         }
 
         String token = jwtUtil.createToken(patient.getId(), "patient");
-        return Map.of("success", true, "message", "Login successful",
-                "token", token, "data", Map.of("token", token), "name", patient.getName());
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Login successful");
+        resp.put("token", token);
+        resp.put("data", Map.of("token", token));
+        resp.put("name", patient.getName());
+        return resp;
     }
 
-    public Map<String, Object> verifyEmailToken(Map<String, Object> body) {
-        String token = (String) body.get("token");
-        if (token == null) {
-            return Map.of("success", false, "message", "Token is required");
+    public Map<String, Object> verifyEmailToken(VerifyTokenRequest req) {
+        Patient patient = patientRepository.findByVerifyToken(req.getToken())
+                .orElseThrow(() -> ApiException.badRequest("Invalid token"));
+        patient.setVerified(true);
+        patientRepository.save(patient);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Email verified successfully");
+        return resp;
+    }
+
+    public Map<String, Object> forgotPassword(ForgotPasswordRequest req) {
+        // Same response whether or not the email exists, to prevent account enumeration.
+        patientRepository.findByEmail(req.getEmail()).ifPresent(patient -> {
+            patient.setPasswordResetToken(generateToken());
+            patient.setPasswordResetExpiresAt(Instant.now().plus(RESET_TOKEN_TTL_MINUTES, ChronoUnit.MINUTES));
+            patientRepository.save(patient);
+            try {
+                emailService.sendPasswordResetEmail(patient.getEmail(), patient.getPasswordResetToken(), frontendUrl, "patient");
+            } catch (Exception e) {
+                log.error("Failed to send password reset email to {}", patient.getEmail(), e);
+            }
+        });
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", RESET_GENERIC_REPLY);
+        return resp;
+    }
+
+    public Map<String, Object> verifyForgotPasswordToken(ResetPasswordRequest req) {
+        Patient patient = patientRepository.findByPasswordResetToken(req.getToken())
+                .orElseThrow(() -> ApiException.badRequest("Invalid or expired token"));
+
+        Instant expiry = patient.getPasswordResetExpiresAt();
+        if (expiry == null || Instant.now().isAfter(expiry)) {
+            patient.setPasswordResetToken(null);
+            patient.setPasswordResetExpiresAt(null);
+            patientRepository.save(patient);
+            throw ApiException.badRequest("Invalid or expired token");
         }
 
-        var patientOpt = patientRepository.findByVerifyToken(token);
-        if (patientOpt.isEmpty()) {
-            return Map.of("success", false, "message", "Invalid token");
-        }
-
-        Patient patient = patientOpt.get();
+        patient.setPassword(passwordEncoder.encode(req.getPassword()));
+        // Invalidate the token so it cannot be reused.
+        patient.setPasswordResetToken(null);
+        patient.setPasswordResetExpiresAt(null);
         patient.setVerified(true);
         patientRepository.save(patient);
 
-        return Map.of("success", true, "message", "Email verified successfully");
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Password reset successful");
+        return resp;
     }
 
-    public Map<String, Object> forgotPassword(Map<String, Object> body) {
-        String email = (String) body.get("email");
-        if (email == null) {
-            return Map.of("success", false, "message", "Email is required");
-        }
-
-        var patientOpt = patientRepository.findByEmail(email);
-        if (patientOpt.isEmpty()) {
-            return Map.of("success", false, "message", "Email not found");
-        }
-
-        Patient patient = patientOpt.get();
-        try {
-            emailService.sendPasswordResetEmail(email, patient.getVerifyToken(), frontendUrl);
-        } catch (Exception e) {
-            return Map.of("success", false, "message", "Failed to send reset email");
-        }
-
-        return Map.of("success", true, "message", "Password reset email sent");
-    }
-
-    public Map<String, Object> verifyForgotPasswordToken(Map<String, Object> body) {
-        String token = (String) body.get("token");
-        String newPassword = (String) body.get("password");
-
-        if (token == null || newPassword == null) {
-            return Map.of("success", false, "message", "Token and password are required");
-        }
-
-        var patientOpt = patientRepository.findByVerifyToken(token);
-        if (patientOpt.isEmpty()) {
-            return Map.of("success", false, "message", "Invalid token");
-        }
-
-        Patient patient = patientOpt.get();
-        patient.setPassword(passwordEncoder.encode(newPassword));
-        patient.setVerified(true);
-        patientRepository.save(patient);
-
-        return Map.of("success", true, "message", "Password reset successful");
-    }
-
-    private String generateVerificationToken() {
+    private String generateToken() {
         byte[] bytes = new byte[32];
         new SecureRandom().nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);

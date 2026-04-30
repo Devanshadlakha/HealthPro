@@ -198,8 +198,14 @@ const DoctorSignup = () => {
   const [hospitals, setHospitals] = useState<any[]>([]);
 
   useEffect(() => {
-    axiosFetchPublic.get('/hospitals')
-      .then((res) => setHospitals(res.data))
+    // /hospitals is paginated; ask for a large page so the dropdown shows them all.
+    axiosFetchPublic.get('/hospitals?size=50')
+      .then((res) => {
+        const data = res.data;
+        if (Array.isArray(data)) setHospitals(data);
+        else if (Array.isArray(data?.content)) setHospitals(data.content);
+        else setHospitals([]);
+      })
       .catch((err) => console.error("Error fetching hospitals:", err));
   }, []);
 

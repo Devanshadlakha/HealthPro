@@ -1,8 +1,10 @@
 package com.healthpro.doctorappointment.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,8 +26,11 @@ public class Appointment {
     // New fields for hospital-based booking
     private String hospitalId;
     private String slotId;
+    @Indexed
     private String slotDate;
     private String slotTime;
+    // When the doctor was emailed a reminder for this appointment. Null = not yet sent.
+    private Instant reminderSentAt;
     private String paymentStatus;       // "pending", "paid", "failed"
     private String razorpayOrderId;
     private String razorpayPaymentId;
@@ -69,6 +74,8 @@ public class Appointment {
     public void setRazorpayPaymentId(String razorpayPaymentId) { this.razorpayPaymentId = razorpayPaymentId; }
     public Integer getFees() { return fees; }
     public void setFees(Integer fees) { this.fees = fees; }
+    public Instant getReminderSentAt() { return reminderSentAt; }
+    public void setReminderSentAt(Instant reminderSentAt) { this.reminderSentAt = reminderSentAt; }
 
     // Clinical notes
     private String consultationNotes;

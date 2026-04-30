@@ -38,11 +38,32 @@ public class EmailService {
         sendEmail(to, "Verify your email", html);
     }
 
-    public void sendPasswordResetEmail(String to, String token, String frontendUrl) {
-        String link = frontendUrl + "/reset-password?token=" + token;
+    public void sendDoctorAppointmentReminder(String to, String doctorName, String patientName,
+                                              String problem, String slotTime, String frontendUrl) {
+        String html = "<h2>Upcoming appointment in ~30 minutes</h2>"
+                + "<p>Hi Dr. " + escape(doctorName) + ",</p>"
+                + "<p>You have an appointment starting at <b>" + escape(slotTime) + "</b>.</p>"
+                + "<ul>"
+                + "<li><b>Patient:</b> " + escape(patientName) + "</li>"
+                + (problem != null && !problem.isBlank() ? "<li><b>Problem:</b> " + escape(problem) + "</li>" : "")
+                + "</ul>"
+                + "<p><a href=\"" + frontendUrl + "/doctor\">Open today's queue</a></p>";
+        sendEmail(to, "Appointment reminder: " + slotTime, html);
+    }
+
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    public void sendPasswordResetEmail(String to, String token, String frontendUrl, String userType) {
+        // Path segment satisfies the dynamic route; query string is what the page actually reads.
+        String link = frontendUrl + "/auth/reset-password/" + token + "?type=" + userType + "&token=" + token;
         String html = "<h2>Password Reset</h2>"
+                + "<p>This link is valid for 30 minutes and can be used once.</p>"
                 + "<p>Click the link below to reset your password:</p>"
-                + "<a href=\"" + link + "\">Reset Password</a>";
+                + "<a href=\"" + link + "\">Reset Password</a>"
+                + "<p>If you did not request this, ignore this email.</p>";
         sendEmail(to, "Reset your password", html);
     }
 }

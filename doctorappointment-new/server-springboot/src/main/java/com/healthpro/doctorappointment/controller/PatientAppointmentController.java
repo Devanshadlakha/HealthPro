@@ -55,19 +55,8 @@ public class PatientAppointmentController {
 
     @PostMapping("/review-doctor")
     public ResponseEntity<?> reviewDoctor(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        try {
-            String userId = (String) request.getAttribute("userId");
-            Map<String, Object> result = service.reviewDoctor(userId, body);
-            if (result.containsKey("error")) {
-                String error = (String) result.get("error");
-                if (error.contains("not authorized")) return ResponseEntity.status(403).body(error);
-                if (error.contains("not found")) return ResponseEntity.status(404).body(error);
-                return ResponseEntity.badRequest().body(error);
-            }
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("An error occurred while submitting the review.");
-        }
+        String userId = (String) request.getAttribute("userId");
+        return ResponseEntity.ok(service.reviewDoctor(userId, body));
     }
 
     @GetMapping("/past-appointments")

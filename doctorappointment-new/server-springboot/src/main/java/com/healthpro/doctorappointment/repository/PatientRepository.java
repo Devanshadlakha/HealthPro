@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface PatientRepository extends MongoRepository<Patient, String> {
     Optional<Patient> findByEmail(String email);
     Optional<Patient> findByVerifyToken(String verifyToken);
+    Optional<Patient> findByPasswordResetToken(String passwordResetToken);
     List<Patient> findByNameContainingIgnoreCase(String name);
 }

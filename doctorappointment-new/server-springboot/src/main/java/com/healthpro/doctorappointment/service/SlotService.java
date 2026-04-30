@@ -6,6 +6,7 @@ import com.healthpro.doctorappointment.model.TimeSlot;
 import com.healthpro.doctorappointment.repository.AppointmentRepository;
 import com.healthpro.doctorappointment.repository.DoctorRepository;
 import com.healthpro.doctorappointment.repository.TimeSlotRepository;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -90,9 +91,12 @@ public class SlotService {
                 .set("reservedByPatientId", patientId)
                 .set("reservedAt", Instant.now());
 
-        TimeSlot result = mongoTemplate.findAndModify(query, update,
-                com.mongodb.client.model.ReturnDocument.class.isAssignableFrom(TimeSlot.class)
-                        ? TimeSlot.class : TimeSlot.class);
+        TimeSlot result = mongoTemplate.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(true),
+                TimeSlot.class
+        );
 
         if (result == null) {
             return Map.of("success", false, "message", "Slot is no longer available");

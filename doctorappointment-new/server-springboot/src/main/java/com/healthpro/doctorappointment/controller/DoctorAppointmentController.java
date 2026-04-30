@@ -127,16 +127,52 @@ public class DoctorAppointmentController {
     }
 
     @GetMapping("/get-my-reviews")
-    public ResponseEntity<?> getMyReviews(HttpServletRequest request) {
+    public ResponseEntity<?> getMyReviews(HttpServletRequest request,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "10") int size) {
         try {
             String userId = (String) request.getAttribute("userId");
-            return ResponseEntity.ok(service.getReviews(userId));
+            return ResponseEntity.ok(service.getReviews(userId, page, size));
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Server error.");
         }
     }
 
+    @PostMapping("/reply-review")
+    public ResponseEntity<?> replyReview(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        String userId = (String) request.getAttribute("userId");
+        String reviewId = (String) body.get("reviewId");
+        String reply = (String) body.get("reply");
+        return ResponseEntity.ok(service.replyToReview(userId, reviewId, reply));
+    }
+
+    @GetMapping("/calendar")
+    public ResponseEntity<?> getCalendar(HttpServletRequest request,
+                                         @RequestParam String from,
+                                         @RequestParam String to) {
+        try {
+            String userId = (String) request.getAttribute("userId");
+            return ResponseEntity.ok(service.getCalendar(userId, from, to));
+        } catch (Exception e) {
+            log.error("getCalendar failed", e);
+            return ResponseEntity.status(500).body(Map.of("err", "Server error"));
+        }
+    }
+
     // ---- New endpoints for Doctor Dashboard ----
+
+    @GetMapping("/upcoming")
+    public ResponseEntity<?> getUpcoming(HttpServletRequest request,
+                                         @RequestParam(defaultValue = "3") int limit,
+                                         @RequestParam(defaultValue = "240") int withinMinutes) {
+        try {
+            String userId = (String) request.getAttribute("userId");
+            return ResponseEntity.ok(service.getUpcomingForDoctor(userId, limit, withinMinutes));
+        } catch (Exception e) {
+            log.error("getUpcoming failed", e);
+            return ResponseEntity.status(500).body(Map.of("err", "Server error"));
+        }
+    }
 
     @GetMapping("/todays-appointments")
     public ResponseEntity<?> getTodaysAppointments(HttpServletRequest request) {

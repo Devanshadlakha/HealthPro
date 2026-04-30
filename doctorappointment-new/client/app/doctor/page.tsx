@@ -14,8 +14,19 @@ interface TodayAppointment {
   patientGender: string;
 }
 
+interface UpcomingItem {
+  appointmentId: string;
+  patientname: string;
+  problem: string;
+  slotTime: string;
+  slotDate: string;
+  minutesAway: number;
+  reminderSent: boolean;
+}
+
 export default function DoctorDashboard() {
   const [appointments, setAppointments] = useState<TodayAppointment[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [scheduleLocked, setScheduleLocked] = useState<boolean | null>(null);
@@ -31,15 +42,45 @@ export default function DoctorDashboard() {
       .finally(() => setLoading(false));
   };
 
+  const fetchUpcoming = () => {
+    const token = localStorage.getItem("token") || "";
+    axiosFetchDoctor(token)
+      .get("/upcoming?limit=3&withinMinutes=240")
+      .then((res) => setUpcoming(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setUpcoming([]));
+  };
+
   useEffect(() => {
     fetchToday();
-    const interval = setInterval(fetchToday, 30000);
+    fetchUpcoming();
+    // Skip polling when the tab is hidden — saves backend load and mobile battery.
+    const tick = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchToday();
+      fetchUpcoming();
+    };
+    const interval = setInterval(tick, 30000);
+
+    // Refresh immediately when the tab becomes visible again, so a returning user
+    // sees fresh data without waiting up to 30s.
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchToday();
+        fetchUpcoming();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     const token = localStorage.getItem("token") || "";
     axiosFetchDoctor(token)
       .get("/weekly-schedule")
       .then((res) => setScheduleLocked(!!res.data?.locked))
       .catch(() => setScheduleLocked(null));
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const markConsulted = (appointmentId: string) => {
@@ -79,6 +120,38 @@ export default function DoctorDashboard() {
         </div>
       </div>
 
+      {/* Upcoming reminder banner */}
+      {upcoming.length > 0 && (
+        <div className="mb-6 bg-teal-50 border border-teal-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-teal-900">
+                Next appointment in {upcoming[0].minutesAway} min — {upcoming[0].slotTime}
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                {upcoming[0].patientname || "Patient"}
+                {upcoming[0].problem ? ` · ${upcoming[0].problem}` : ""}
+                {upcoming[0].reminderSent ? " · email reminder sent" : ""}
+              </p>
+              {upcoming.length > 1 && (
+                <p className="text-xs text-teal-600 mt-1">
+                  +{upcoming.length - 1} more in the next 4 hours
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => router.push(`/doctor/consultation/${upcoming[0].appointmentId}`)}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition flex-shrink-0"
+            >
+              Open
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* No-schedule banner */}
       {scheduleLocked === false && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
@@ -100,8 +173,20 @@ export default function DoctorDashboard() {
 
       {/* Appointments */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600"></div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border p-5 animate-pulse">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 bg-gray-200 rounded" />
+                  <div className="h-3 w-3/4 bg-gray-200 rounded" />
+                  <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                </div>
+                <div className="h-6 w-20 bg-gray-200 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : appointments.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border">

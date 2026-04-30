@@ -35,12 +35,17 @@ function HospitalSkeleton() {
   );
 }
 
+const PAGE_SIZE = 12;
+
 export default function HospitalsPage() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   useEffect(() => {
     axiosFetchPublic.get("/hospitals/cities").then((res) => {
@@ -48,19 +53,27 @@ export default function HospitalsPage() {
     });
   }, []);
 
+  // Reset to page 0 whenever the filter changes.
+  useEffect(() => {
+    setPage(0);
+  }, [selectedCity, search]);
+
   useEffect(() => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = { page, size: PAGE_SIZE };
     if (selectedCity) params.city = selectedCity;
     if (search) params.search = search;
 
     axiosFetchPublic
       .get("/hospitals", { params })
       .then((res) => {
-        setHospitals(res.data);
+        const data = res.data || {};
+        setHospitals(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
       })
       .finally(() => setLoading(false));
-  }, [selectedCity, search]);
+  }, [selectedCity, search, page]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -89,11 +102,40 @@ export default function HospitalsPage() {
           <p className="text-gray-400 text-sm mt-1">Try a different city or search term</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {hospitals.map((hospital) => (
-            <HospitalCard key={hospital.id} hospital={hospital} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {hospitals.map((hospital) => (
+              <HospitalCard key={hospital.id} hospital={hospital} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-8">
+              <p className="text-sm text-gray-500">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalElements)} of {totalElements}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                  disabled={page === 0}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-4 py-2 text-sm font-medium text-gray-700">
+                  Page {page + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                  disabled={page >= totalPages - 1}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

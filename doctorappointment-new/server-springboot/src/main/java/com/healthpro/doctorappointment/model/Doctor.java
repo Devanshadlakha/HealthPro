@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,9 @@ public class Doctor {
     private String password;
     private Boolean verified;
     private String verifyToken;
+    @Indexed
+    private String passwordResetToken;
+    private Instant passwordResetExpiresAt;
     private String mobile;
     private Integer experience;
     private String specialization;
@@ -49,6 +53,10 @@ public class Doctor {
     public void setVerified(Boolean verified) { this.verified = verified; }
     public String getVerifyToken() { return verifyToken; }
     public void setVerifyToken(String verifyToken) { this.verifyToken = verifyToken; }
+    public String getPasswordResetToken() { return passwordResetToken; }
+    public void setPasswordResetToken(String passwordResetToken) { this.passwordResetToken = passwordResetToken; }
+    public Instant getPasswordResetExpiresAt() { return passwordResetExpiresAt; }
+    public void setPasswordResetExpiresAt(Instant passwordResetExpiresAt) { this.passwordResetExpiresAt = passwordResetExpiresAt; }
     public String getMobile() { return mobile; }
     public void setMobile(String mobile) { this.mobile = mobile; }
     public Integer getExperience() { return experience; }

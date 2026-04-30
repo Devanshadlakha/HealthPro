@@ -13,6 +13,7 @@ interface PatientResult {
 
 const NAV_LINKS = [
   { label: "Dashboard", path: "/doctor" },
+  { label: "Calendar", path: "/doctor/calendar" },
   { label: "Scheduler", path: "/doctor/scheduler" },
   { label: "Appointments", path: "/doctor/global-appointments" },
   { label: "Pending", path: "/doctor/pending-bookings" },
@@ -161,8 +162,6 @@ export default function Navbar() {
             <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
               <button onClick={() => { router.push("/doctor/profile"); setShowMenu(false); }}
                 className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">Profile</button>
-              <button onClick={() => { router.push("/doctor/manage-slots"); setShowMenu(false); }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">Manage Slots</button>
               <hr className="my-1" />
               <button onClick={handleLogout}
                 className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">Logout</button>

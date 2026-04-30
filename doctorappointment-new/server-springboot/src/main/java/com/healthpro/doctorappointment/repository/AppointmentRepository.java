@@ -15,4 +15,10 @@ public interface AppointmentRepository extends MongoRepository<Appointment, Stri
     List<Appointment> findByPatientIdContainingAndProgressOrderBySlotDateDesc(String patientId, String progress);
     List<Appointment> findByPatientIdContaining(String patientId);
     java.util.Optional<Appointment> findByRazorpayOrderId(String razorpayOrderId);
+
+    // Reminder support: find appointments scheduled today that have not yet had a reminder dispatched.
+    List<Appointment> findBySlotDateAndReminderSentAtIsNullAndProgressIn(String slotDate, java.util.Collection<String> progress);
+
+    // Calendar/upcoming support: find a doctor's appointments within a date range.
+    List<Appointment> findByAppointedDoctorIdContainingAndSlotDateBetween(String doctorId, String fromDate, String toDate);
 }

@@ -2,9 +2,7 @@ package com.healthpro.doctorappointment.service;
 
 import com.healthpro.doctorappointment.model.Appointment;
 import com.healthpro.doctorappointment.model.Doctor;
-import com.healthpro.doctorappointment.model.Hospital;
 import com.healthpro.doctorappointment.model.Patient;
-import com.healthpro.doctorappointment.model.Rating;
 import com.healthpro.doctorappointment.repository.AppointmentRepository;
 import com.healthpro.doctorappointment.repository.DoctorRepository;
 import com.healthpro.doctorappointment.repository.HospitalRepository;
@@ -20,15 +18,18 @@ public class PatientAppointmentService {
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
     private final HospitalRepository hospitalRepository;
+    private final ReviewService reviewService;
 
     public PatientAppointmentService(AppointmentRepository appointmentRepository,
                                       DoctorRepository doctorRepository,
                                       PatientRepository patientRepository,
-                                      HospitalRepository hospitalRepository) {
+                                      HospitalRepository hospitalRepository,
+                                      ReviewService reviewService) {
         this.appointmentRepository = appointmentRepository;
         this.doctorRepository = doctorRepository;
         this.patientRepository = patientRepository;
         this.hospitalRepository = hospitalRepository;
+        this.reviewService = reviewService;
     }
 
     public Appointment createAppointment(String userId, Map<String, Object> body) {
@@ -112,49 +113,7 @@ public class PatientAppointmentService {
         String appointmentId = (String) body.get("appointmentId");
         int rating = Integer.parseInt(body.get("rating").toString());
         String message = (String) body.get("message");
-
-        if (rating < 1 || rating > 5) {
-            return Map.of("error", "Rating must be between 1 and 5.");
-        }
-
-        var aptOpt = appointmentRepository.findById(appointmentId);
-        if (aptOpt.isEmpty()) {
-            return Map.of("error", "Appointment not found.");
-        }
-
-        Appointment appointment = aptOpt.get();
-
-        // Check if patient owns this appointment
-        boolean isOwner = appointment.getPatientId().stream()
-                .anyMatch(pid -> pid.equals(userId));
-        if (!isOwner) {
-            return Map.of("error", "You are not authorized to review this appointment.");
-        }
-
-        if (appointment.getReviewed() != null && appointment.getReviewed()) {
-            return Map.of("error", "This appointment has already been reviewed.");
-        }
-
-        // Find doctor
-        if (appointment.getAppointedDoctorId() == null || appointment.getAppointedDoctorId().isEmpty()) {
-            return Map.of("error", "Doctor not found.");
-        }
-
-        String doctorId = appointment.getAppointedDoctorId().get(0);
-        var doctorOpt = doctorRepository.findById(doctorId);
-        if (doctorOpt.isEmpty()) {
-            return Map.of("error", "Doctor not found.");
-        }
-
-        Doctor doctor = doctorOpt.get();
-        Rating newReview = new Rating(appointmentId, appointment.getPatientname(), rating, message);
-        doctor.getRating().add(newReview);
-        doctorRepository.save(doctor);
-
-        appointment.setReviewed(true);
-        appointmentRepository.save(appointment);
-
-        return Map.of("message", "Review submitted successfully.", "doctor", doctor);
+        return reviewService.submitReview(userId, appointmentId, rating, message);
     }
 
     public List<Appointment> getPastAppointments(String userId) {

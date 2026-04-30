@@ -7,6 +7,8 @@ import com.healthpro.doctorappointment.repository.DoctorRepository;
 import com.healthpro.doctorappointment.repository.HospitalRepository;
 import com.healthpro.doctorappointment.repository.PatientRepository;
 import com.healthpro.doctorappointment.service.SlotService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,9 @@ public class SeedController {
     private final SlotService slotService;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.seed.token:}")
+    private String seedToken;
+
     public SeedController(HospitalRepository hospitalRepository, DoctorRepository doctorRepository,
                           PatientRepository patientRepository, SlotService slotService,
                           PasswordEncoder passwordEncoder) {
@@ -35,8 +40,23 @@ public class SeedController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    private ResponseEntity<?> guard(String headerToken) {
+        if (seedToken == null || seedToken.isBlank()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "Seed endpoints are disabled"));
+        }
+        if (headerToken == null || !seedToken.equals(headerToken)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "Invalid seed token"));
+        }
+        return null;
+    }
+
     @PostMapping("/all")
-    public ResponseEntity<?> seedAll() {
+    public ResponseEntity<?> seedAll(@RequestHeader(value = "X-Seed-Token", required = false) String headerToken) {
+        ResponseEntity<?> denied = guard(headerToken);
+        if (denied != null) return denied;
+
         Map<String, Object> result = new LinkedHashMap<>();
 
         // 1. Seed hospitals
@@ -51,7 +71,6 @@ public class SeedController {
         for (Hospital h : hospitals) {
             List<Doctor> docs = createDoctorsForHospital(h, hashedPassword);
             for (Doctor d : docs) {
-                // Remove existing doctor with same email so we can re-seed
                 doctorRepository.findByEmail(d.getEmail()).ifPresent(existing -> doctorRepository.delete(existing));
                 doctorRepository.save(d);
                 seededDoctors.add(d);
@@ -266,17 +285,17 @@ public class SeedController {
     }
 
     @PostMapping("/hospitals")
-    public ResponseEntity<?> seedHospitals() {
-        return seedAll();
+    public ResponseEntity<?> seedHospitals(@RequestHeader(value = "X-Seed-Token", required = false) String t) {
+        return seedAll(t);
     }
 
     @PostMapping("/doctors")
-    public ResponseEntity<?> seedDoctors() {
-        return seedAll();
+    public ResponseEntity<?> seedDoctors(@RequestHeader(value = "X-Seed-Token", required = false) String t) {
+        return seedAll(t);
     }
 
     @PostMapping("/slots")
-    public ResponseEntity<?> seedSlots() {
-        return seedAll();
+    public ResponseEntity<?> seedSlots(@RequestHeader(value = "X-Seed-Token", required = false) String t) {
+        return seedAll(t);
     }
 }
