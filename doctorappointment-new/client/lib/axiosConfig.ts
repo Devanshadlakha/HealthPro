@@ -24,11 +24,11 @@ function instanceFor(prefix: string): AxiosInstance {
 const axiosFetch = axios.create({ baseURL, withCredentials: true });
 const axiosFetchPublic = axios.create({ baseURL, withCredentials: true });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line no-unused-vars
 const axiosFetchType = (_token?: string) => instanceFor("");
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line no-unused-vars
 const axiosFetchDoctor = (_token?: string) => instanceFor("/doctor-appointment");
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line no-unused-vars
 const axiosFetchPatient = (_token?: string) => instanceFor("/patient-appointment");
 
 export { axiosFetch, axiosFetchPatient, axiosFetchDoctor, axiosFetchType, axiosFetchPublic };
