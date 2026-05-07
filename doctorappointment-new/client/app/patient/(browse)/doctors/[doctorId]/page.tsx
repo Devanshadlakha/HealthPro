@@ -56,8 +56,7 @@ export default function DoctorProfilePage() {
 
   const handleBookSlot = async () => {
     if (!selectedSlot || !doctor) return;
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!localStorage.getItem("role")) {
       router.push("/auth");
       return;
     }

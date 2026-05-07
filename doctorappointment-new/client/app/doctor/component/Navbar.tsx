@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { axiosFetchDoctor } from "@/lib/axiosConfig";
+import { axiosFetchDoctor, axiosFetchPublic } from "@/lib/axiosConfig";
 
 interface PatientResult {
   id: string;
@@ -15,8 +15,7 @@ const NAV_LINKS = [
   { label: "Dashboard", path: "/doctor" },
   { label: "Calendar", path: "/doctor/calendar" },
   { label: "Scheduler", path: "/doctor/scheduler" },
-  { label: "Appointments", path: "/doctor/global-appointments" },
-  { label: "Pending", path: "/doctor/pending-bookings" },
+  { label: "Bookings", path: "/doctor/pending-bookings" },
   { label: "Reviews", path: "/doctor/watch-reviews" },
 ];
 
@@ -28,10 +27,13 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [doctorName, setDoctorName] = useState("Doctor");
   const searchRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const doctorName = typeof window !== "undefined" ? localStorage.getItem("doctorname") || "Doctor" : "Doctor";
+  useEffect(() => {
+    setDoctorName(localStorage.getItem("doctorname") || "Doctor");
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -63,8 +65,13 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await axiosFetchPublic.post("/doctor-auth/logout");
+    } catch {
+      // Best-effort: continue with client-side cleanup even if the call fails
+    }
+    localStorage.removeItem("role");
     localStorage.removeItem("doctorname");
     window.location.href = "/";
   };

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { axiosFetch, axiosFetchPublic } from "@/lib/axiosConfig";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import PasswordField from "@/components/PasswordField";
+import { isPasswordValid } from "@/lib/passwordPolicy";
 export default function Home() {
   const [formType, setFormType] = useState<"patient" | "doctor">("patient")
   const [action, setAction] = useState<"login" | "signup">("login")
@@ -64,25 +66,19 @@ const PatientLogin = () => {
 
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Patient Login:', formData);
-    try{
-      e.preventDefault();
-      console.log('Patient Signup:', formData);
-      const res=await axiosFetch.post("/patient-auth/login",formData);
-      if(res.status==200){
-        console.log(res.data);
+    try {
+      const res = await axiosFetch.post("/patient-auth/login", formData);
+      if (res.status === 200) {
         setpatientname(res.data.name);
-        localStorage.setItem('patientname',res.data.name);
-        localStorage.setItem("token",res.data.data.token);
-        console.log("Logged in Succesfully");
-        toast.success('Logged in Sucessfully')   
+        localStorage.setItem('patientname', res.data.name);
+        localStorage.setItem("role", "patient");
+        toast.success('Logged in successfully');
         router.push("/patient/hospitals");
       }
-    }catch(err){
-      toast.error("Login in failed")
-     console.log(err);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Login failed");
+    }
   };
-}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -123,24 +119,32 @@ const PatientSignup = () => {
     gender: '',
     age: ''
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async(e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPasswordValid(formData.password)) {
+      toast.error("Password does not meet the requirements");
+      return;
+    }
+    if (formData.password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
     try{
-      e.preventDefault();
-      console.log('Patient Signup:', formData);
       const res=await axiosFetch.post("/patient-auth/signup",formData);
-      if(res.status==200){
-        console.log("Signed in Succesfully");
-        toast.success('Patient Signed up Sucessfully')        
+      if(res.status>=200 && res.status<300){
+        toast.success('Patient Signed up Sucessfully')
       }
-    }catch(err){
-      toast.error("Sign up failed")
-  console.log(err);
-  }
+    }catch(err: any){
+      const msg = err?.response?.data?.message || err?.message || "Sign up failed";
+      toast.error(msg);
+      console.error(err);
+    }
   };
 
   return (
@@ -153,9 +157,24 @@ const PatientSignup = () => {
         <label htmlFor="email" className="block mb-1 font-medium">Email:</label>
         <input type="email" id="email" name="email" required className="w-full px-3 py-2 border rounded-md" onChange={handleChange} />
       </div>
+      <PasswordField
+        value={formData.password}
+        onChange={(v) => setFormData({ ...formData, password: v })}
+      />
       <div>
-        <label htmlFor="password" className="block mb-1 font-medium">Password:</label>
-        <input type="password" id="password" name="password" required className="w-full px-3 py-2 border rounded-md" onChange={handleChange} />
+        <label htmlFor="confirmPassword" className="block mb-1 font-medium">Confirm Password:</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          required
+          className="w-full px-3 py-2 border rounded-md"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+        {confirmPassword.length > 0 && confirmPassword !== formData.password && (
+          <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+        )}
       </div>
       <div>
         <label htmlFor="mobile" className="block mb-1 font-medium">Mobile:</label>
@@ -195,6 +214,7 @@ const DoctorSignup = () => {
     fees: '',
     hospitalId: ''
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [hospitals, setHospitals] = useState<any[]>([]);
 
   useEffect(() => {
@@ -219,18 +239,25 @@ const DoctorSignup = () => {
       toast.error("Please select a hospital");
       return;
     }
+    if (!isPasswordValid(formData.password)) {
+      toast.error("Password does not meet the requirements");
+      return;
+    }
+    if (formData.password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
     try {
-      const response:any = await axiosFetch.post('/doctor-auth/signup', { formData });
-      console.log(response);
-
+      const response:any = await axiosFetch.post('/doctor-auth/signup', formData);
       if (response.data.success) {
         toast.success("Doctor Signed up Successfully! You can now login.");
       } else {
         toast.error(response.data.message || "Signup failed");
       }
-    } catch (error) {
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || "An error occurred during signup.";
+      toast.error(msg);
       console.error("Error during signup:", error);
-      toast.error("An error occurred during signup.");
     }
   };
 
@@ -253,9 +280,24 @@ const DoctorSignup = () => {
         <label htmlFor="email" className="block mb-1 font-medium">Email:</label>
         <input type="email" id="email" name="email" required className="w-full px-3 py-2 border rounded-md" onChange={handleChange} />
       </div>
+      <PasswordField
+        value={formData.password}
+        onChange={(v) => setFormData({ ...formData, password: v })}
+      />
       <div>
-        <label htmlFor="password" className="block mb-1 font-medium">Password:</label>
-        <input type="password" id="password" name="password" required className="w-full px-3 py-2 border rounded-md" onChange={handleChange} />
+        <label htmlFor="confirmPassword" className="block mb-1 font-medium">Confirm Password:</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          required
+          className="w-full px-3 py-2 border rounded-md"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+        {confirmPassword.length > 0 && confirmPassword !== formData.password && (
+          <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+        )}
       </div>
       <div>
         <label htmlFor="mobile" className="block mb-1 font-medium">Mobile:</label>
@@ -297,26 +339,15 @@ const DoctorSignin = () => {
   
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
-    try {   
-      const response:any = await axiosFetch.post('/doctor-auth/login', { formData });
-      console.log(response);
-      
-      
+    try {
+      const response:any = await axiosFetch.post('/doctor-auth/login', formData);
+
       if (response.data.success) {
-        const token = response.data.data.token;
-  
-        localStorage.setItem("token", token);
-  
-        if (localStorage.getItem("token")) {
-          
-          setdocotorname(response.data.name);
-          localStorage.setItem("doctorname",response.data.name);
-          console.log("Token:", localStorage.getItem("token"));
-          toast.success("Doctor Signed in Successfully");
-          navigate.push("/doctor/profile");
-        } else {
-          toast.error("Failed to store token.");
-        }
+        setdocotorname(response.data.name);
+        localStorage.setItem("doctorname", response.data.name);
+        localStorage.setItem("role", "doctor");
+        toast.success("Doctor Signed in Successfully");
+        navigate.push("/doctor/profile");
       } else {
         toast.error("Invalid Credentials");
       }

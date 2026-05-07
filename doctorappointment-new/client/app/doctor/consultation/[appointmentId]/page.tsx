@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { axiosFetchDoctor } from "@/lib/axiosConfig";
 import PreviousHistory from "./components/PreviousHistory";
 import NotesEditor from "./components/NotesEditor";
+import PrescriptionEditor from "./components/PrescriptionEditor";
 
 interface AppointmentDetail {
   _id: string;
@@ -17,6 +18,10 @@ interface AppointmentDetail {
   patientAge: number;
   patientGender: string;
   patientEmail: string;
+  prescriptions?: Array<{ medicine?: string; dosage?: string; frequency?: string; duration?: string; notes?: string }>;
+  attachments?: string[];
+  videoCallApproved?: boolean;
+  videoCallStarted?: boolean;
 }
 
 interface HistoryEntry {
@@ -132,6 +137,93 @@ export default function ConsultationPage() {
             patientName={appointment.patientname || "Patient"}
             problem={appointment.problem || ""}
           />
+        </div>
+      </div>
+
+      {/* Prescription + Attachments row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="bg-white rounded-xl border p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Prescription
+          </h2>
+          <PrescriptionEditor
+            appointmentId={appointment._id}
+            initial={appointment.prescriptions || []}
+          />
+        </div>
+
+        <div className="bg-white rounded-xl border p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+            Patient Reports
+          </h2>
+          {appointment.videoCallApproved && (
+            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center justify-between gap-3">
+              <p className="text-sm text-purple-800 font-medium">
+                Video consultation {appointment.videoCallStarted ? "in progress" : "approved"}
+              </p>
+              {appointment.videoCallStarted ? (
+                <a
+                  href={`https://meet.jit.si/healthpro-${appointment._id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                >
+                  Rejoin Video Call
+                </a>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      await axiosFetchDoctor().post("/start-video-call", { appointmentId: appointment._id });
+                      setAppointment({ ...appointment, videoCallStarted: true });
+                      window.open(`https://meet.jit.si/healthpro-${appointment._id}`, "_blank", "noopener,noreferrer");
+                    } catch (e: any) {
+                      alert(e?.response?.data?.message || "Failed to start video call");
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                >
+                  Start Video Call
+                </button>
+              )}
+            </div>
+          )}
+          {!appointment.attachments || appointment.attachments.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">No reports uploaded by the patient yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {appointment.attachments.map((url, i) => {
+                const isImage = /\.(jpe?g|png|webp|gif)$/i.test(url);
+                return (
+                  <li key={i}>
+                    <a
+                      href={`${process.env.backendUrl || ""}${url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition"
+                    >
+                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                        {isImage ? "IMG" : "PDF"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">Report {i + 1}</p>
+                        <p className="text-xs text-gray-500 truncate">{url.split("/").pop()}</p>
+                      </div>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </div>

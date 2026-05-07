@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { HomeIcon, CalendarIcon, PlusCircleIcon, UserCircleIcon } from "@heroicons/react/solid";
+import { HomeIcon, CalendarIcon, UserCircleIcon } from "@heroicons/react/solid";
 
 
 const SideBar = () => {
@@ -17,16 +17,6 @@ const SideBar = () => {
           <CalendarIcon className="h-8 w-8 text-white group-hover:text-yellow-300 transition duration-300" />
           <span className="text-white text-xs group-hover:text-yellow-300 transition duration-300">On Going</span>
           <span className="text-white text-xs group-hover:text-yellow-300 transition duration-300">Appointments</span>
-        </button>
-        <button
-          className="group flex flex-col items-center space-y-1"
-          onClick={() => {
-            router.push("/patient/create-new-appointment");
-          }}
-        >
-          <PlusCircleIcon className="h-8 w-8 text-white group-hover:text-yellow-300 transition duration-300" />
-          <span className="text-white text-xs group-hover:text-yellow-300 transition duration-300">Create New</span>
-          <span className="text-white text-xs group-hover:text-yellow-300 transition duration-300">Appointment</span>
         </button>
         <button className="group flex flex-col items-center space-y-1" onClick={()=>{
           router.push("/patient/past-appointment")

@@ -88,6 +88,18 @@ public class SlotController {
         return ResponseEntity.ok(slotService.rejectBooking(appointmentId));
     }
 
+    @PostMapping("/approve-change")
+    public ResponseEntity<?> approveChange(@RequestBody Map<String, Object> body) {
+        String appointmentId = (String) body.get("appointmentId");
+        return ResponseEntity.ok(slotService.approveChange(appointmentId));
+    }
+
+    @PostMapping("/reject-change")
+    public ResponseEntity<?> rejectChange(@RequestBody Map<String, Object> body) {
+        String appointmentId = (String) body.get("appointmentId");
+        return ResponseEntity.ok(slotService.rejectChange(appointmentId));
+    }
+
     @GetMapping("/pending-bookings")
     public ResponseEntity<?> getPendingBookings(HttpServletRequest request) {
         String doctorId = (String) request.getAttribute("userId");

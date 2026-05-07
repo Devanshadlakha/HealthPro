@@ -13,8 +13,10 @@ public class DoctorSignupRequest {
 
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
-    @Pattern(regexp = ".*[A-Za-z].*", message = "Password must contain a letter")
+    @Pattern(regexp = ".*[A-Z].*", message = "Password must contain an uppercase letter")
+    @Pattern(regexp = ".*[a-z].*", message = "Password must contain a lowercase letter")
     @Pattern(regexp = ".*\\d.*", message = "Password must contain a digit")
+    @Pattern(regexp = ".*[^A-Za-z0-9].*", message = "Password must contain a special character")
     private String password;
 
     @NotBlank(message = "Mobile is required")

@@ -36,74 +36,8 @@ public class DoctorAppointmentService {
         this.reviewService = reviewService;
     }
 
-    public List<Map<String, Object>> getAllAppointments() {
-        List<Appointment> appointments = appointmentRepository.findByProgress("toaccept");
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (Appointment apt : appointments) {
-            Map<String, Object> map = appointmentToMap(apt);
-            // Populate patient name from patientId (like Node.js populate)
-            if (apt.getPatientId() != null && !apt.getPatientId().isEmpty()) {
-                String patientIdStr = apt.getPatientId().get(0);
-                var patientOpt = patientRepository.findById(patientIdStr);
-                if (patientOpt.isPresent()) {
-                    Map<String, Object> patientInfo = new HashMap<>();
-                    patientInfo.put("_id", patientOpt.get().getId());
-                    patientInfo.put("name", patientOpt.get().getName());
-                    map.put("patientId", patientInfo);
-                } else {
-                    map.put("patientId", null);
-                }
-            } else {
-                map.put("patientId", null);
-            }
-            result.add(map);
-        }
-        return result;
-    }
-
     public List<Appointment> getDoctorAppointments(String doctorId) {
         return appointmentRepository.findByAppointedDoctorIdContainingAndProgress(doctorId, "ongoing");
-    }
-
-    public Appointment addPresentDoctor(String appointmentId, String doctorId) {
-        var aptOpt = appointmentRepository.findById(appointmentId);
-        if (aptOpt.isEmpty()) {
-            throw new RuntimeException("Appointment not found");
-        }
-        Appointment apt = aptOpt.get();
-        if (!apt.getPresentDoctorIds().contains(doctorId)) {
-            apt.getPresentDoctorIds().add(doctorId);
-        }
-        return appointmentRepository.save(apt);
-    }
-
-    public Object updateAppointmentProgress(String appointmentId, Boolean done, String name, String doctorId) {
-        if (appointmentId == null) {
-            throw new IllegalArgumentException("Appointment ID and progress are required.");
-        }
-
-        var aptOpt = appointmentRepository.findById(appointmentId);
-        if (aptOpt.isEmpty()) {
-            throw new RuntimeException("Appointment not found");
-        }
-
-        Appointment apt = aptOpt.get();
-
-        if (done != null && done) {
-            // Mark as done
-            apt.setProgress("done");
-            apt.setDoctorname(name);
-            appointmentRepository.save(apt);
-            return Map.of("message", "Appointment deleted successfully.");
-        } else {
-            // Mark as ongoing and assign doctor
-            apt.setProgress("ongoing");
-            if (!apt.getAppointedDoctorId().contains(doctorId)) {
-                apt.getAppointedDoctorId().add(doctorId);
-            }
-            return appointmentRepository.save(apt);
-        }
     }
 
     public Map<String, Object> getUserProfile(String doctorId) {
@@ -263,6 +197,36 @@ public class DoctorAppointmentService {
         return Map.of("success", true, "message", "Notes saved successfully");
     }
 
+    /**
+     * Doctor starts a video consultation. Patient's Join button stays disabled until this fires.
+     */
+    public Map<String, Object> startVideoCall(String appointmentId, String doctorId) {
+        var aptOpt = appointmentRepository.findById(appointmentId);
+        if (aptOpt.isEmpty()) return Map.of("success", false, "message", "Appointment not found");
+        Appointment apt = aptOpt.get();
+        if (apt.getAppointedDoctorId() == null || !apt.getAppointedDoctorId().contains(doctorId)) {
+            return Map.of("success", false, "message", "Not your appointment");
+        }
+        if (!Boolean.TRUE.equals(apt.getVideoCallApproved())) {
+            return Map.of("success", false, "message", "Video call has not been approved for this appointment");
+        }
+        apt.setVideoCallStarted(true);
+        appointmentRepository.save(apt);
+        return Map.of("success", true, "message", "Video call started");
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> savePrescription(String appointmentId, List<Map<String, String>> items) {
+        var aptOpt = appointmentRepository.findById(appointmentId);
+        if (aptOpt.isEmpty()) {
+            return Map.of("success", false, "message", "Appointment not found");
+        }
+        Appointment apt = aptOpt.get();
+        apt.setPrescriptions(items != null ? items : new ArrayList<>());
+        appointmentRepository.save(apt);
+        return Map.of("success", true, "message", "Prescription saved");
+    }
+
     public Map<String, Object> getAppointmentDetail(String appointmentId) {
         var aptOpt = appointmentRepository.findById(appointmentId);
         if (aptOpt.isEmpty()) {
@@ -273,6 +237,10 @@ public class DoctorAppointmentService {
         map.put("slotDate", apt.getSlotDate());
         map.put("slotTime", apt.getSlotTime());
         map.put("consultationNotes", apt.getConsultationNotes());
+        map.put("prescriptions", apt.getPrescriptions());
+        map.put("attachments", apt.getAttachments());
+        map.put("videoCallApproved", Boolean.TRUE.equals(apt.getVideoCallApproved()));
+        map.put("videoCallStarted", Boolean.TRUE.equals(apt.getVideoCallStarted()));
         map.put("hospitalId", apt.getHospitalId());
         if (apt.getPatientId() != null && !apt.getPatientId().isEmpty()) {
             String pid = apt.getPatientId().get(0);
@@ -301,6 +269,8 @@ public class DoctorAppointmentService {
             map.put("time", apt.getTime());
             map.put("progress", apt.getProgress());
             map.put("consultationNotes", apt.getConsultationNotes());
+            map.put("prescriptions", apt.getPrescriptions());
+            map.put("attachments", apt.getAttachments());
             map.put("hospitalId", apt.getHospitalId());
             result.add(map);
         }
@@ -409,13 +379,14 @@ public class DoctorAppointmentService {
         Map<String, Object> map = new HashMap<>();
         map.put("_id", apt.getId());
         map.put("progress", apt.getProgress());
-        map.put("presentDoctorIds", apt.getPresentDoctorIds());
         map.put("appointedDoctorId", apt.getAppointedDoctorId());
         map.put("patientname", apt.getPatientname());
         map.put("doctorname", apt.getDoctorname());
         map.put("problem", apt.getProblem());
         map.put("time", apt.getTime());
         map.put("reviewed", apt.getReviewed());
+        map.put("videoCallApproved", Boolean.TRUE.equals(apt.getVideoCallApproved()));
+        map.put("videoCallStarted", Boolean.TRUE.equals(apt.getVideoCallStarted()));
         return map;
     }
 }

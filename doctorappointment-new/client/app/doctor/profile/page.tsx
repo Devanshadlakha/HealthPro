@@ -14,14 +14,8 @@ const UserProfile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchUserProfile = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("No token found.");
-      setLoading(false);
-      return;
-    }
     try {
-      const response = await axiosFetchDoctor(token).get("/user-profile");
+      const response = await axiosFetchDoctor().get("/user-profile");
       setUser(response.data.user);
     } catch (err) {
       console.error("Error fetching user profile:", err);

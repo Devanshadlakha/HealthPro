@@ -2,6 +2,7 @@ package com.healthpro.doctorappointment.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,6 +17,8 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_COOKIE = "hp_token";
+
     private final JwtUtil jwtUtil;
 
     public JwtAuthFilter(JwtUtil jwtUtil) {
@@ -26,17 +29,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String token = extractToken(request);
 
-        if (authHeader != null && !authHeader.isEmpty()) {
-            // Support both raw token and "Bearer <token>" format
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+        if (token != null && !token.isEmpty()) {
             try {
                 if (jwtUtil.isValid(token)) {
                     String userId = jwtUtil.getUserId(token);
                     String userType = jwtUtil.getUserType(token);
 
-                    // Store userId and userType as request attributes (like Node.js req.userId)
                     request.setAttribute("userId", userId);
                     request.setAttribute("userType", userType);
 
@@ -50,5 +50,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        // 1) httpOnly cookie (preferred — not readable by JS)
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if (AUTH_COOKIE.equals(c.getName()) && c.getValue() != null && !c.getValue().isEmpty()) {
+                    return c.getValue();
+                }
+            }
+        }
+        // 2) Legacy Authorization header — accepted as fallback for non-browser clients
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && !authHeader.isEmpty()) {
+            return authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+        }
+        return null;
     }
 }

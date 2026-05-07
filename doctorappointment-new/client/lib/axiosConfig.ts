@@ -2,28 +2,33 @@ import axios, { AxiosInstance } from "axios";
 
 const baseURL = process.env.backendUrl;
 
-// Reuse axios instances across calls — `axios.create` was being called once per
-// fetch, churning interceptors and memory unnecessarily. The cache is keyed by
-// `${variant}:${token}` so a new login just creates a fresh instance once.
+// Auth is carried by the httpOnly `hp_token` cookie. `withCredentials: true`
+// makes the browser attach it to every request and accept Set-Cookie responses.
+// The legacy `(token)` signature on the per-prefix helpers is kept for backward
+// compatibility — the value is ignored, since the cookie is the source of truth.
+axios.defaults.withCredentials = true;
+
 const instanceCache = new Map<string, AxiosInstance>();
 
-function withAuth(prefix: string, token: string): AxiosInstance {
-  const key = `${prefix}|${token}`;
-  let inst = instanceCache.get(key);
+function instanceFor(prefix: string): AxiosInstance {
+  let inst = instanceCache.get(prefix);
   if (inst) return inst;
   inst = axios.create({
     baseURL: baseURL + prefix,
-    headers: { Authorization: token },
+    withCredentials: true,
   });
-  instanceCache.set(key, inst);
+  instanceCache.set(prefix, inst);
   return inst;
 }
 
-const axiosFetch = axios.create({ baseURL });
-const axiosFetchPublic = axios.create({ baseURL });
+const axiosFetch = axios.create({ baseURL, withCredentials: true });
+const axiosFetchPublic = axios.create({ baseURL, withCredentials: true });
 
-const axiosFetchType = (token: string) => withAuth("", token);
-const axiosFetchDoctor = (token: string) => withAuth("/doctor-appointment", token);
-const axiosFetchPatient = (token: string) => withAuth("/patient-appointment", token);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const axiosFetchType = (_token?: string) => instanceFor("");
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const axiosFetchDoctor = (_token?: string) => instanceFor("/doctor-appointment");
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const axiosFetchPatient = (_token?: string) => instanceFor("/patient-appointment");
 
 export { axiosFetch, axiosFetchPatient, axiosFetchDoctor, axiosFetchType, axiosFetchPublic };

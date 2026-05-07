@@ -19,24 +19,19 @@ const VerifyToken = (params: any) => {
 
   useEffect(() => {
     if (user === "Doctor") {
-      console.log(token,user);
-      
       axiosFetch
-        .post("/doctor-auth/verify-email-token", {
-          token,
-        })
+        .post("/doctor-auth/verify-email-token", { token })
         .then(() => {
           alert("Doctor has been verified");
           navigate.push("/");
         })
         .catch((error) => {
-          console.log(error);
+          console.error("Doctor verification failed:", error);
+          setType("wrong or already verified");
         });
     } else {
       axiosFetch
-        .post("/patient-auth/verify-email-token", {
-          token,
-        })
+        .post("/patient-auth/verify-email-token", { token })
         .then(() => {
           setType("verification done redirecting to login");
           setTimeout(() => {

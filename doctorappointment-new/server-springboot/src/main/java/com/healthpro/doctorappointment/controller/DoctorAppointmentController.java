@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -33,16 +34,6 @@ public class DoctorAppointmentController {
         this.service = service;
     }
 
-    @GetMapping("/get-all-appointments")
-    public ResponseEntity<?> getAllAppointments() {
-        try {
-            return ResponseEntity.ok(service.getAllAppointments());
-        } catch (Exception e) {
-            log.error("getAllAppointments failed", e);
-            return ResponseEntity.status(500).body(Map.of("err", "Server error"));
-        }
-    }
-
     @GetMapping("/get-my-appointments")
     public ResponseEntity<?> getMyAppointments(HttpServletRequest request) {
         try {
@@ -51,33 +42,6 @@ public class DoctorAppointmentController {
         } catch (Exception e) {
             log.error("getMyAppointments failed", e);
             return ResponseEntity.status(500).body(Map.of("err", "Server error"));
-        }
-    }
-
-    @PostMapping("/add-present-doctor")
-    public ResponseEntity<?> addPresentDoctor(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        try {
-            String userId = (String) request.getAttribute("userId");
-            String appointmentId = (String) body.get("appointmentId");
-            return ResponseEntity.ok(service.addPresentDoctor(appointmentId, userId));
-        } catch (Exception e) {
-            log.error("addPresentDoctor failed", e);
-            return ResponseEntity.status(500).body(Map.of("err", "Server error"));
-        }
-    }
-
-    @PostMapping("/update-appointment")
-    public ResponseEntity<?> updateAppointment(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        try {
-            String userId = (String) request.getAttribute("userId");
-            String appointmentId = (String) body.get("appointmentId");
-            Boolean done = body.get("done") != null ? Boolean.parseBoolean(body.get("done").toString()) : false;
-            String name = (String) body.get("name");
-            return ResponseEntity.ok(service.updateAppointmentProgress(appointmentId, done, name, userId));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Error updating appointment progress."));
         }
     }
 
@@ -189,6 +153,22 @@ public class DoctorAppointmentController {
     public ResponseEntity<?> markConsulted(@RequestBody Map<String, Object> body) {
         String appointmentId = (String) body.get("appointmentId");
         return ResponseEntity.ok(service.markConsulted(appointmentId));
+    }
+
+    @PostMapping("/start-video-call")
+    public ResponseEntity<?> startVideoCall(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        String doctorId = (String) request.getAttribute("userId");
+        String appointmentId = (String) body.get("appointmentId");
+        return ResponseEntity.ok(service.startVideoCall(appointmentId, doctorId));
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/save-prescription")
+    public ResponseEntity<?> savePrescription(@RequestBody Map<String, Object> body) {
+        String appointmentId = (String) body.get("appointmentId");
+        Object items = body.get("items");
+        List<Map<String, String>> list = items instanceof List ? (List<Map<String, String>>) items : List.of();
+        return ResponseEntity.ok(service.savePrescription(appointmentId, list));
     }
 
     @PostMapping("/save-notes")

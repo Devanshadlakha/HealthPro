@@ -7,14 +7,15 @@ const Wrapper = ({ children }: any) => {
   const router = useRouter();
   const path = usePathname();
 
-  // Initial: validate the stored token (if any) and redirect from "/" to the right home.
-  // Runs once. Does NOT block rendering — children paint immediately while the
-  // token check happens in the background.
+  // On app load: if the user appears logged in (role flag) AND we're at "/",
+  // resolve their type via the cookie-authenticated /get-token-type and route
+  // them to the right home. The actual auth credential is the httpOnly cookie;
+  // the role flag in localStorage is just a UI hint and not security-sensitive.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const token = localStorage.getItem("token") || "";
-    if (!token) return;
-    axiosFetchType(token)
+    const role = localStorage.getItem("role");
+    if (!role) return;
+    axiosFetchType()
       .get("/get-token-type")
       .then((data) => {
         if (data.status !== 200) return;
@@ -23,20 +24,19 @@ const Wrapper = ({ children }: any) => {
         else router.push("/doctor/profile");
       })
       .catch(() => {
-        localStorage.removeItem("token");
+        // Cookie expired or cleared on the server — drop the UI flag.
+        localStorage.removeItem("role");
+        localStorage.removeItem("patientname");
+        localStorage.removeItem("doctorname");
       });
-    // Intentionally only on mount — token validation is a one-shot at app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Guard protected routes when the token disappears (logout in another tab, etc.).
+  // Guard protected routes when the role flag disappears (logout in another tab).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const token = localStorage.getItem("token") || "";
-    if (
-      (path.startsWith("/patient") || path.startsWith("/doctor")) &&
-      token === ""
-    ) {
+    const role = localStorage.getItem("role") || "";
+    if ((path.startsWith("/patient") || path.startsWith("/doctor")) && role === "") {
       router.push("/");
     }
   }, [path, router]);

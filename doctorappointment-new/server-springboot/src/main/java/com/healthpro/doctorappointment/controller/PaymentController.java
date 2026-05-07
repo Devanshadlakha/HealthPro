@@ -1,6 +1,7 @@
 package com.healthpro.doctorappointment.controller;
 
 import com.healthpro.doctorappointment.service.PaymentService;
+import com.healthpro.doctorappointment.service.SlotService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,15 +12,23 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final SlotService slotService;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, SlotService slotService) {
         this.paymentService = paymentService;
+        this.slotService = slotService;
     }
 
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body) {
         String appointmentId = (String) body.get("appointmentId");
         return ResponseEntity.ok(paymentService.createOrder(appointmentId));
+    }
+
+    @PostMapping("/pay-on-visit")
+    public ResponseEntity<?> payOnVisit(@RequestBody Map<String, Object> body) {
+        String appointmentId = (String) body.get("appointmentId");
+        return ResponseEntity.ok(slotService.confirmBookingPayOnVisit(appointmentId));
     }
 
     @PostMapping("/verify")

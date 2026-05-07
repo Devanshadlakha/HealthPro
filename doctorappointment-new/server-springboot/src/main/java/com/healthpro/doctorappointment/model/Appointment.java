@@ -7,14 +7,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Document(collection = "appointments")
 public class Appointment {
     @Id
     private String id;
 
-    private String progress; // "toaccept", "received", "ongoing", "done"
-    private List<String> presentDoctorIds = new ArrayList<>();
+    private String progress; // "pending" | "approved" | "ongoing" | "done" | "cancelled" | "rejected" | "failed"
     private List<String> appointedDoctorId = new ArrayList<>();
     private List<String> patientId = new ArrayList<>();
     private String patientname;
@@ -42,8 +42,6 @@ public class Appointment {
     public void setId(String id) { this.id = id; }
     public String getProgress() { return progress; }
     public void setProgress(String progress) { this.progress = progress; }
-    public List<String> getPresentDoctorIds() { return presentDoctorIds; }
-    public void setPresentDoctorIds(List<String> presentDoctorIds) { this.presentDoctorIds = presentDoctorIds; }
     public List<String> getAppointedDoctorId() { return appointedDoctorId; }
     public void setAppointedDoctorId(List<String> appointedDoctorId) { this.appointedDoctorId = appointedDoctorId; }
     public List<String> getPatientId() { return patientId; }
@@ -80,6 +78,36 @@ public class Appointment {
     // Clinical notes
     private String consultationNotes;
 
+    // Prescription items (e-Rx)
+    private List<Map<String, String>> prescriptions = new ArrayList<>();
+
+    // Patient-uploaded attachments (URLs under /uploads/...)
+    private List<String> attachments = new ArrayList<>();
+
+    // Pending change requested by patient: "reschedule" | "video_call" | null
+    private String pendingChange;
+    private String requestedSlotId;
+    private String requestedSlotDate;
+    private String requestedSlotTime;
+    private Boolean videoCallApproved;
+    private Boolean videoCallStarted;
+
     public String getConsultationNotes() { return consultationNotes; }
     public void setConsultationNotes(String consultationNotes) { this.consultationNotes = consultationNotes; }
+    public List<Map<String, String>> getPrescriptions() { return prescriptions; }
+    public void setPrescriptions(List<Map<String, String>> prescriptions) { this.prescriptions = prescriptions; }
+    public List<String> getAttachments() { return attachments; }
+    public void setAttachments(List<String> attachments) { this.attachments = attachments; }
+    public String getPendingChange() { return pendingChange; }
+    public void setPendingChange(String pendingChange) { this.pendingChange = pendingChange; }
+    public String getRequestedSlotId() { return requestedSlotId; }
+    public void setRequestedSlotId(String requestedSlotId) { this.requestedSlotId = requestedSlotId; }
+    public String getRequestedSlotDate() { return requestedSlotDate; }
+    public void setRequestedSlotDate(String requestedSlotDate) { this.requestedSlotDate = requestedSlotDate; }
+    public String getRequestedSlotTime() { return requestedSlotTime; }
+    public void setRequestedSlotTime(String requestedSlotTime) { this.requestedSlotTime = requestedSlotTime; }
+    public Boolean getVideoCallApproved() { return videoCallApproved; }
+    public void setVideoCallApproved(Boolean videoCallApproved) { this.videoCallApproved = videoCallApproved; }
+    public Boolean getVideoCallStarted() { return videoCallStarted; }
+    public void setVideoCallStarted(Boolean videoCallStarted) { this.videoCallStarted = videoCallStarted; }
 }

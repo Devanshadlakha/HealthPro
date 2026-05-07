@@ -1,18 +1,27 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { axiosFetchPublic } from "@/lib/axiosConfig";
 
 export default function PatientTopNav() {
     const router = useRouter();
     const [showMenu, setShowMenu] = useState(false);
+    const [patientName, setPatientName] = useState("Patient");
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
+    useEffect(() => {
+        setPatientName(localStorage.getItem("patientname") || "Patient");
+    }, []);
+
+    const handleLogout = async () => {
+        try {
+            await axiosFetchPublic.post("/patient-auth/logout");
+        } catch {
+            // Best-effort: continue even if the call fails
+        }
+        localStorage.removeItem("role");
         localStorage.removeItem("patientname");
         router.push("/");
     };
-
-    const patientName = typeof window !== "undefined" ? localStorage.getItem("patientname") || "Patient" : "Patient";
 
     return (
         <nav className="bg-white shadow-md sticky top-0 z-50">

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { axiosFetchPatient } from "@/lib/axiosConfig";
 import Link from "next/link";
+import PrescriptionCard from "@/components/PrescriptionCard";
 
 export default function PastAppointmentsPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -72,6 +73,30 @@ export default function PastAppointmentsPage() {
                 ) : null}
                 {apt.slotTime && <span>{apt.slotTime}</span>}
               </div>
+
+              {apt.prescriptions && apt.prescriptions.length > 0 && (
+                <PrescriptionCard
+                  items={apt.prescriptions}
+                  doctorName={`Dr. ${apt.doctorname || ""}`.trim()}
+                  date={apt.slotDate}
+                />
+              )}
+
+              {apt.attachments && apt.attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {apt.attachments.map((url: string, i: number) => (
+                    <a
+                      key={i}
+                      href={`${process.env.backendUrl || ""}${url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"
+                    >
+                      Report {i + 1}
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {!apt.reviewed && (
                 <div className="mt-4 pt-3 border-t border-gray-100">

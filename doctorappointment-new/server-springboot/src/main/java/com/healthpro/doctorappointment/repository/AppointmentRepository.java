@@ -11,6 +11,7 @@ public interface AppointmentRepository extends MongoRepository<Appointment, Stri
     List<Appointment> findByPatientIdContainingAndProgress(String patientId, String progress);
     List<Appointment> findByPatientIdContainingAndProgressNot(String patientId, String progress);
     List<Appointment> findByAppointedDoctorIdContainingAndProgress(String doctorId, String progress);
+    List<Appointment> findByAppointedDoctorIdContainingAndPendingChangeNotNull(String doctorId);
     List<Appointment> findByAppointedDoctorIdContainingAndSlotDate(String doctorId, String slotDate);
     List<Appointment> findByPatientIdContainingAndProgressOrderBySlotDateDesc(String patientId, String progress);
     List<Appointment> findByPatientIdContaining(String patientId);

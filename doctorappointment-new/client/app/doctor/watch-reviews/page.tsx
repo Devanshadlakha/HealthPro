@@ -29,14 +29,8 @@ export default function Page() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const fetchReviews = useCallback(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("No token found.");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    axiosFetchDoctor(token)
+    axiosFetchDoctor()
       .get(`/get-my-reviews?page=${page}&size=${PAGE_SIZE}`)
       .then((res) => {
         const data = res.data || {};

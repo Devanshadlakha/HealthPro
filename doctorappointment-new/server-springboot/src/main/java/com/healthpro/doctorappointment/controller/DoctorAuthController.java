@@ -1,16 +1,19 @@
 package com.healthpro.doctorappointment.controller;
 
+import com.healthpro.doctorappointment.dto.DoctorSignupRequest;
 import com.healthpro.doctorappointment.dto.ForgotPasswordRequest;
+import com.healthpro.doctorappointment.dto.LoginRequest;
 import com.healthpro.doctorappointment.dto.ResetPasswordRequest;
 import com.healthpro.doctorappointment.dto.VerifyTokenRequest;
-import com.healthpro.doctorappointment.dto.WrappedDoctorSignupRequest;
-import com.healthpro.doctorappointment.dto.WrappedLoginRequest;
 import com.healthpro.doctorappointment.exception.ApiException;
+import com.healthpro.doctorappointment.security.AuthCookieFactory;
 import com.healthpro.doctorappointment.security.LoginRateLimiter;
 import com.healthpro.doctorappointment.service.DoctorAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,19 +25,23 @@ public class DoctorAuthController {
 
     private final DoctorAuthService doctorAuthService;
     private final LoginRateLimiter rateLimiter;
+    private final AuthCookieFactory cookieFactory;
 
-    public DoctorAuthController(DoctorAuthService doctorAuthService, LoginRateLimiter rateLimiter) {
+    public DoctorAuthController(DoctorAuthService doctorAuthService,
+                                LoginRateLimiter rateLimiter,
+                                AuthCookieFactory cookieFactory) {
         this.doctorAuthService = doctorAuthService;
         this.rateLimiter = rateLimiter;
+        this.cookieFactory = cookieFactory;
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Map<String, Object>> signup(@Valid @RequestBody WrappedDoctorSignupRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(doctorAuthService.signup(req.getFormData()));
+    public ResponseEntity<Map<String, Object>> signup(@Valid @RequestBody DoctorSignupRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(doctorAuthService.signup(req));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody WrappedLoginRequest req,
+    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest req,
                                                      HttpServletRequest httpReq) {
         String key = "doctor:" + clientIp(httpReq);
         if (rateLimiter.isBlocked(key)) {
@@ -42,15 +49,24 @@ public class DoctorAuthController {
             throw ApiException.tooManyRequests("Too many login attempts. Try again in " + retryAfter + "s");
         }
         try {
-            Map<String, Object> resp = doctorAuthService.login(req.getFormData());
+            Map<String, Object> resp = doctorAuthService.login(req);
             rateLimiter.recordSuccess(key);
-            return ResponseEntity.ok(resp);
+            ResponseCookie cookie = cookieFactory.issue((String) resp.get("token"));
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(resp);
         } catch (ApiException ex) {
             if (ex.getStatus() == HttpStatus.UNAUTHORIZED) {
                 rateLimiter.recordFailure(key);
             }
             throw ex;
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, Object>> logout() {
+        ResponseCookie cookie = cookieFactory.clear();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("success", true, "message", "Logged out"));
     }
 
     @PostMapping("/verify-email-token")

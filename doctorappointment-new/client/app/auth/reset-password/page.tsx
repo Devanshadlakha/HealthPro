@@ -15,9 +15,6 @@ const ForgotPassword = () => {
     // Get user type from URL query parameter
     const userType = searchParams.get('type');
 
-    console.log(userType);
-    
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
