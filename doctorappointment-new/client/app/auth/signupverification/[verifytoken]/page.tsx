@@ -39,6 +39,8 @@ const VerifyToken = (params: any) => {
           }, 1000);
         });
     }
+    // navigate / user / setType are stable for the lifetime of this verification flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   return <>Verifying...</>;

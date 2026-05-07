@@ -95,6 +95,7 @@ const UserProfile = () => {
           <div className="relative group">
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-teal-600 font-bold text-3xl flex-shrink-0 overflow-hidden">
               {user?.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={resolvePhotoSrc(user.photoUrl)} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 (user?.name || "D").charAt(0).toUpperCase()
