@@ -66,8 +66,7 @@ export default function DoctorProfilePage() {
     try {
       const res = await axiosFetchPublic.post(
         "/slots/book",
-        { slotId: selectedSlot, doctorId: doctor.id, doctorName: doctor.name },
-        { headers: { Authorization: token } }
+        { slotId: selectedSlot, doctorId: doctor.id, doctorName: doctor.name }
       );
       if (res.data.success) {
         setBookingResult("success");
