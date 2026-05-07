@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { axiosFetchPublic } from "@/lib/axiosConfig";
 
 const Logout = () => {
-    const [change,setChange]=useState(false);
-  const handleLogout = () => {
-   
-    localStorage.removeItem('token');
-    window.location.href="/"
+  const handleLogout = async () => {
+    try {
+      await axiosFetchPublic.post("/patient-auth/logout");
+    } catch {
+      // Best-effort cookie clear; continue
+    }
+    localStorage.removeItem("role");
+    localStorage.removeItem("patientname");
+    window.location.href = "/";
   };
 
   return (

@@ -1,13 +1,13 @@
     "use client";
 
     import { axiosFetch } from "@/lib/axiosConfig";
-    import { useEffect, useState } from "react";
+    import { Suspense, useEffect, useState } from "react";
     import { useRouter } from "next/navigation";
     import { useSearchParams } from "next/navigation";
     import PasswordField from "@/components/PasswordField";
     import { isPasswordValid } from "@/lib/passwordPolicy";
     import { toast } from "react-toastify";
-    const VerifyToken = (params: any) => {
+    const VerifyTokenInner = (params: any) => {
         const [password, setPassword] = useState("");
         const [retypepassword, setRetypePassword] = useState('');
         const searchParams = useSearchParams();
@@ -76,4 +76,10 @@
                 </div>
             </div></>;
     };
-    export default VerifyToken;
+    export default function VerifyToken(props: any) {
+        return (
+            <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-green-400 to-blue-500" />}>
+                <VerifyTokenInner {...props} />
+            </Suspense>
+        );
+    }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { axiosFetch } from "@/lib/axiosConfig";
 
 
-const ForgotPassword = () => {
+const ForgotPasswordInner = () => {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const searchParams = useSearchParams();
@@ -125,4 +125,10 @@ const ForgotPassword = () => {
     );
 };
 
-export default ForgotPassword;
+export default function ForgotPassword() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-green-400 to-blue-500" />}>
+            <ForgotPasswordInner />
+        </Suspense>
+    );
+}

@@ -1,12 +1,19 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
+import { axiosFetchPublic } from "@/lib/axiosConfig";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await axiosFetchPublic.post("/patient-auth/logout");
+    } catch {
+      // Best-effort cookie clear; continue
+    }
+    localStorage.removeItem("role");
+    localStorage.removeItem("patientname");
     window.location.href = "/";
   };
 

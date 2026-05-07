@@ -1,10 +1,10 @@
 "use client";
 
 import { axiosFetch } from "@/lib/axiosConfig";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const VerifyToken = (params: any) => {
+const VerifyTokenInner = (params: any) => {
   const [type, setType] = useState<
     | "verifying"
     | "wrong or already verified"
@@ -46,4 +46,10 @@ const VerifyToken = (params: any) => {
   return <>Verifying...</>;
 };
 
-export default VerifyToken;
+export default function VerifyToken(props: any) {
+  return (
+    <Suspense fallback={<>Verifying...</>}>
+      <VerifyTokenInner {...props} />
+    </Suspense>
+  );
+}
