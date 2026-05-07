@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { axiosFetchPublic } from "@/lib/axiosConfig";
+import ProfileSelector from "@/components/ProfileSelector";
 
 export default function PatientTopNav() {
     const router = useRouter();
@@ -58,7 +59,10 @@ export default function PatientTopNav() {
                         </button>
                     </div>
 
-                    {/* User Menu */}
+                    {/* User + profile menu */}
+                    <div className="flex items-center gap-3">
+                        <ProfileSelector />
+
                     <div className="relative">
                         <button
                             onClick={() => setShowMenu(!showMenu)}
@@ -93,6 +97,7 @@ export default function PatientTopNav() {
                                 </button>
                             </div>
                         )}
+                    </div>
                     </div>
                 </div>
             </div>

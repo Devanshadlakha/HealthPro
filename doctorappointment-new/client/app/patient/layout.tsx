@@ -1,3 +1,6 @@
+"use client";
+import { ProfileProvider } from "@/components/ProfileContext";
+
 export default function PatientLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
+    return <ProfileProvider>{children}</ProfileProvider>;
 }

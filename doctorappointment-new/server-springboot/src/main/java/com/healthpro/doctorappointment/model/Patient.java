@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "patients")
 public class Patient {
@@ -26,6 +28,10 @@ public class Patient {
     private Integer age;
     private String dob;
     private String gender;
+
+    // Bookable profiles under this account. The first one (relation="self") is auto-created
+    // at signup. Additional dependents (parents, children, spouse) can be added later.
+    private List<PatientProfile> profiles = new ArrayList<>();
 
     public Patient() {}
 
@@ -53,4 +59,6 @@ public class Patient {
     public void setDob(String dob) { this.dob = dob; }
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
+    public List<PatientProfile> getProfiles() { return profiles; }
+    public void setProfiles(List<PatientProfile> profiles) { this.profiles = profiles; }
 }

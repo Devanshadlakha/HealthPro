@@ -29,6 +29,8 @@ interface AppointmentData {
   requestedSlotTime?: string;
   videoCallApproved?: boolean;
   videoCallStarted?: boolean;
+  profileId?: string;
+  profileRelation?: string;
   prescriptions?: Array<{ medicine?: string; dosage?: string; frequency?: string; duration?: string; notes?: string }>;
   attachments?: string[];
 }

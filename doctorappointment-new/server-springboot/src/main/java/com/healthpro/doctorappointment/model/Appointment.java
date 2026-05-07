@@ -17,6 +17,8 @@ public class Appointment {
     private String progress; // "pending" | "approved" | "ongoing" | "done" | "cancelled" | "rejected" | "failed"
     private List<String> appointedDoctorId = new ArrayList<>();
     private List<String> patientId = new ArrayList<>();
+    private String profileId;       // PatientProfile.id under the patient account
+    private String profileRelation; // snapshot at booking time ("self", "mother", etc.)
     private String patientname;
     private String doctorname;
     private String problem;
@@ -110,4 +112,8 @@ public class Appointment {
     public void setVideoCallApproved(Boolean videoCallApproved) { this.videoCallApproved = videoCallApproved; }
     public Boolean getVideoCallStarted() { return videoCallStarted; }
     public void setVideoCallStarted(Boolean videoCallStarted) { this.videoCallStarted = videoCallStarted; }
+    public String getProfileId() { return profileId; }
+    public void setProfileId(String profileId) { this.profileId = profileId; }
+    public String getProfileRelation() { return profileRelation; }
+    public void setProfileRelation(String profileRelation) { this.profileRelation = profileRelation; }
 }

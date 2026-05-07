@@ -84,7 +84,8 @@ public class SlotService {
      * Atomically reserve a slot for a patient. Uses findAndModify to prevent race conditions.
      */
     public Map<String, Object> reserveSlot(String slotId, String patientId, String patientName,
-                                            String doctorId, String doctorName) {
+                                            String doctorId, String doctorName,
+                                            String profileId, String profileRelation) {
         Query query = new Query(Criteria.where("id").is(slotId).and("status").is("available"));
         Update update = new Update()
                 .set("status", "reserved")
@@ -117,6 +118,8 @@ public class SlotService {
         appointment.setSlotTime(result.getStartTime());
         appointment.setPaymentStatus("pending");
         appointment.setReviewed(false);
+        appointment.setProfileId(profileId);
+        appointment.setProfileRelation(profileRelation);
         Integer doctorFees = doctorRepository.findById(doctorId).map(Doctor::getFees).orElse(null);
         appointment.setFees(doctorFees);
         appointmentRepository.save(appointment);

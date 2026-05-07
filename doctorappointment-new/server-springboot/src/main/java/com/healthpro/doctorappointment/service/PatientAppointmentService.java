@@ -3,6 +3,7 @@ package com.healthpro.doctorappointment.service;
 import com.healthpro.doctorappointment.model.Appointment;
 import com.healthpro.doctorappointment.model.Doctor;
 import com.healthpro.doctorappointment.model.Patient;
+import com.healthpro.doctorappointment.model.PatientProfile;
 import com.healthpro.doctorappointment.repository.AppointmentRepository;
 import com.healthpro.doctorappointment.repository.DoctorRepository;
 import com.healthpro.doctorappointment.repository.HospitalRepository;
@@ -113,6 +114,145 @@ public class PatientAppointmentService {
         return Map.of("user", profile);
     }
 
+    /* -------- Bookable profiles under this account -------- */
+
+    public List<Map<String, Object>> listProfiles(String userId) {
+        Patient p = patientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        ensureSelfProfile(p);
+        return p.getProfiles().stream().map(this::profileToMap).collect(java.util.stream.Collectors.toList());
+    }
+
+    public Map<String, Object> addProfile(String userId, Map<String, Object> body) {
+        Patient p = patientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        ensureSelfProfile(p);
+
+        PatientProfile profile = new PatientProfile();
+        profile.setId(UUID.randomUUID().toString());
+        profile.setName(asString(body.get("name")));
+        profile.setDob(asString(body.get("dob")));
+        profile.setGender(asString(body.get("gender")));
+        profile.setRelation(asString(body.getOrDefault("relation", "other")));
+        profile.setAllergies(asString(body.get("allergies")));
+        profile.setBloodGroup(asString(body.get("bloodGroup")));
+        Object ageObj = body.get("age");
+        if (ageObj != null) {
+            try { profile.setAge(Integer.parseInt(ageObj.toString())); } catch (NumberFormatException ignored) {}
+        }
+        if (profile.getName() == null || profile.getName().isBlank()) {
+            return Map.of("success", false, "message", "Profile name is required");
+        }
+        // A given account can have at most one "self" profile.
+        if ("self".equalsIgnoreCase(profile.getRelation())
+                && p.getProfiles().stream().anyMatch(x -> "self".equalsIgnoreCase(x.getRelation()))) {
+            profile.setRelation("other");
+        }
+
+        p.getProfiles().add(profile);
+        patientRepository.save(p);
+        return Map.of("success", true, "profile", profileToMap(profile));
+    }
+
+    public Map<String, Object> updateProfile(String userId, String profileId, Map<String, Object> body) {
+        Patient p = patientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        PatientProfile profile = p.getProfiles().stream()
+                .filter(x -> profileId.equals(x.getId()))
+                .findFirst()
+                .orElse(null);
+        if (profile == null) return Map.of("success", false, "message", "Profile not found");
+
+        if (body.containsKey("name")) profile.setName(asString(body.get("name")));
+        if (body.containsKey("dob")) profile.setDob(asString(body.get("dob")));
+        if (body.containsKey("gender")) profile.setGender(asString(body.get("gender")));
+        if (body.containsKey("allergies")) profile.setAllergies(asString(body.get("allergies")));
+        if (body.containsKey("bloodGroup")) profile.setBloodGroup(asString(body.get("bloodGroup")));
+        if (body.containsKey("age")) {
+            Object ageObj = body.get("age");
+            if (ageObj != null) {
+                try { profile.setAge(Integer.parseInt(ageObj.toString())); } catch (NumberFormatException ignored) {}
+            }
+        }
+        // Relation can change EXCEPT to/from "self" (we always keep exactly one self).
+        if (body.containsKey("relation")) {
+            String newRel = asString(body.get("relation"));
+            if (!"self".equalsIgnoreCase(profile.getRelation()) && !"self".equalsIgnoreCase(newRel)) {
+                profile.setRelation(newRel);
+            }
+        }
+        patientRepository.save(p);
+        return Map.of("success", true, "profile", profileToMap(profile));
+    }
+
+    public Map<String, Object> deleteProfile(String userId, String profileId) {
+        Patient p = patientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        PatientProfile profile = p.getProfiles().stream()
+                .filter(x -> profileId.equals(x.getId()))
+                .findFirst()
+                .orElse(null);
+        if (profile == null) return Map.of("success", false, "message", "Profile not found");
+        if ("self".equalsIgnoreCase(profile.getRelation())) {
+            return Map.of("success", false, "message", "The self profile cannot be deleted");
+        }
+        // Block deletion if there are non-terminal appointments tied to this profile.
+        boolean hasActive = appointmentRepository.findByPatientIdContaining(userId).stream()
+                .anyMatch(a -> profileId.equals(a.getProfileId())
+                        && !"done".equals(a.getProgress())
+                        && !"cancelled".equals(a.getProgress())
+                        && !"rejected".equals(a.getProgress())
+                        && !"failed".equals(a.getProgress()));
+        if (hasActive) {
+            return Map.of("success", false, "message", "This profile has active appointments. Cancel them first.");
+        }
+        p.getProfiles().removeIf(x -> profileId.equals(x.getId()));
+        patientRepository.save(p);
+        return Map.of("success", true, "message", "Profile removed");
+    }
+
+    /** Ensure every account always has a "self" profile (back-fill for accounts created before profiles existed). */
+    private void ensureSelfProfile(Patient p) {
+        if (p.getProfiles() == null) p.setProfiles(new ArrayList<>());
+        boolean hasSelf = p.getProfiles().stream().anyMatch(x -> "self".equalsIgnoreCase(x.getRelation()));
+        if (!hasSelf) {
+            PatientProfile self = new PatientProfile();
+            self.setId(UUID.randomUUID().toString());
+            self.setName(p.getName());
+            self.setDob(p.getDob());
+            self.setAge(p.getAge());
+            self.setGender(p.getGender());
+            self.setRelation("self");
+            p.getProfiles().add(0, self);
+            patientRepository.save(p);
+        }
+    }
+
+    private Map<String, Object> profileToMap(PatientProfile pr) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", pr.getId());
+        m.put("name", pr.getName());
+        m.put("dob", pr.getDob());
+        m.put("age", pr.getAge());
+        m.put("gender", pr.getGender());
+        m.put("relation", pr.getRelation());
+        m.put("allergies", pr.getAllergies());
+        m.put("bloodGroup", pr.getBloodGroup());
+        return m;
+    }
+
+    private static String asString(Object v) {
+        return v == null ? null : v.toString();
+    }
+
+    /** Look up a profile by id under a given account; null if not found or not owned. */
+    public PatientProfile findProfile(String userId, String profileId) {
+        return patientRepository.findById(userId)
+                .map(p -> p.getProfiles() == null ? null
+                        : p.getProfiles().stream().filter(x -> profileId.equals(x.getId())).findFirst().orElse(null))
+                .orElse(null);
+    }
+
     public Map<String, Object> addAttachment(String appointmentId, String userId, String url) {
         var aptOpt = appointmentRepository.findById(appointmentId);
         if (aptOpt.isEmpty()) return Map.of("success", false, "message", "Appointment not found");
@@ -147,6 +287,8 @@ public class PatientAppointmentService {
         map.put("requestedSlotTime", apt.getRequestedSlotTime());
         map.put("videoCallApproved", Boolean.TRUE.equals(apt.getVideoCallApproved()));
         map.put("videoCallStarted", Boolean.TRUE.equals(apt.getVideoCallStarted()));
+        map.put("profileId", apt.getProfileId());
+        map.put("profileRelation", apt.getProfileRelation());
         return map;
     }
 }

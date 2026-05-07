@@ -66,6 +66,32 @@ public class PatientAppointmentController {
         }
     }
 
+    @GetMapping("/profiles")
+    public ResponseEntity<?> listProfiles(HttpServletRequest request) {
+        String userId = (String) request.getAttribute("userId");
+        return ResponseEntity.ok(service.listProfiles(userId));
+    }
+
+    @PostMapping("/profiles")
+    public ResponseEntity<?> addProfile(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        String userId = (String) request.getAttribute("userId");
+        return ResponseEntity.ok(service.addProfile(userId, body));
+    }
+
+    @PutMapping("/profiles/{profileId}")
+    public ResponseEntity<?> updateProfile(@PathVariable String profileId,
+                                           @RequestBody Map<String, Object> body,
+                                           HttpServletRequest request) {
+        String userId = (String) request.getAttribute("userId");
+        return ResponseEntity.ok(service.updateProfile(userId, profileId, body));
+    }
+
+    @DeleteMapping("/profiles/{profileId}")
+    public ResponseEntity<?> deleteProfile(@PathVariable String profileId, HttpServletRequest request) {
+        String userId = (String) request.getAttribute("userId");
+        return ResponseEntity.ok(service.deleteProfile(userId, profileId));
+    }
+
     @PostMapping("/cancel-appointment")
     public ResponseEntity<?> cancelAppointment(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         String userId = (String) request.getAttribute("userId");

@@ -7,6 +7,7 @@ import com.healthpro.doctorappointment.dto.ResetPasswordRequest;
 import com.healthpro.doctorappointment.dto.VerifyTokenRequest;
 import com.healthpro.doctorappointment.exception.ApiException;
 import com.healthpro.doctorappointment.model.Patient;
+import com.healthpro.doctorappointment.model.PatientProfile;
 import com.healthpro.doctorappointment.repository.PatientRepository;
 import com.healthpro.doctorappointment.security.JwtUtil;
 import org.slf4j.Logger;
@@ -18,10 +19,13 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class PatientAuthService {
@@ -61,6 +65,17 @@ public class PatientAuthService {
         patient.setAge(req.getAge());
         patient.setVerified(true);
         patient.setVerifyToken(generateToken());
+
+        // Bootstrap the "self" profile from signup data so this account can book immediately.
+        PatientProfile self = new PatientProfile();
+        self.setId(UUID.randomUUID().toString());
+        self.setName(req.getName());
+        self.setDob(req.getDob());
+        self.setAge(req.getAge());
+        self.setGender(req.getGender());
+        self.setRelation("self");
+        patient.setProfiles(new ArrayList<>(List.of(self)));
+
         patientRepository.save(patient);
 
         Map<String, Object> resp = new LinkedHashMap<>();

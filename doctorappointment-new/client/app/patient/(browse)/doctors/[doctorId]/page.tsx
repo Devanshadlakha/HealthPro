@@ -64,9 +64,15 @@ export default function DoctorProfilePage() {
     setBooking(true);
     setBookingResult(null);
     try {
+      const profileId = typeof window !== "undefined" ? localStorage.getItem("activeProfileId") : null;
       const res = await axiosFetchPublic.post(
         "/slots/book",
-        { slotId: selectedSlot, doctorId: doctor.id, doctorName: doctor.name }
+        {
+          slotId: selectedSlot,
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          ...(profileId ? { profileId } : {}),
+        }
       );
       if (res.data.success) {
         setBookingResult("success");
