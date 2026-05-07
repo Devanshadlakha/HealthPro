@@ -13,8 +13,8 @@ export default function Contact() {
         <h2 className="text-4xl font-bold text-gray-900 mb-6">Contact Us</h2>
         <p className="text-lg text-gray-600 mb-6">
           You can reach out to us at: <br />
-          <a href="mailto:appuravnehra@gmail.com" className="text-blue-600">
-            appuravnehra@gmail.com
+          <a href="mailto:adlakhadevansh@gmail.com" className="text-blue-600">
+            adlakhadevansh@gmail.com
           </a>
         </p>
         <p className="text-lg text-gray-600">

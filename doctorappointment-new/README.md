@@ -2,6 +2,19 @@
 
 Full-stack appointment + telemedicine app: hospital browsing, slot-based bookings, payments, AI doctor assistant, e-prescriptions, attachments, video consults, reviews, calendar, scheduled email reminders.
 
+## Live Demo
+
+**App:** https://health-pro-smoky.vercel.app
+
+Try it without signing up — pre-seeded accounts:
+
+| Role    | Email                       | Password    |
+|---------|-----------------------------|-------------|
+| Patient | rahul.verma@gmail.com       | Patient@123 |
+| Doctor  | aparna.jaswal@fortis.com    | Doctor@123  |
+
+> First load may take ~30 seconds — the backend wakes from Render free-tier sleep.
+
 ## Tech stack
 - **Frontend** — Next.js 14 (App Router, TypeScript), Tailwind, Axios
 - **Backend** — Spring Boot 3.4, Java 21+, Spring Security, MongoDB Atlas
